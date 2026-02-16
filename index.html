@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking Puasa - Fakta.blue</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800 pb-24">
+
+    <header class="bg-emerald-600 text-white p-6 rounded-b-3xl shadow-lg mb-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold">Ibadah Tracker</h1>
+                <p id="tgl-hijriah" class="text-xs opacity-80">Memuat tanggal...</p>
+            </div>
+            <i class="fa-solid fa-moon text-2xl opacity-50"></i>
+        </div>
+        
+        <div class="mt-6 bg-white/20 p-4 rounded-2xl backdrop-blur-sm">
+            <p class="text-xs uppercase tracking-widest mb-1">Menuju Buka Puasa</p>
+            <h2 id="timer" class="text-4xl font-mono font-bold tracking-tighter">00:00:00</h2>
+        </div>
+    </header>
+
+    <main class="px-4 space-y-8">
+        
+        <section id="jadwal-sholat">
+            <h3 class="font-bold mb-3 flex items-center px-1">
+                <i class="fa-solid fa-clock mr-2 text-emerald-600"></i> Imsakiyah & Sholat
+            </h3>
+            <div id="sholat-container" class="flex space-x-3 overflow-x-auto pb-2 no-scrollbar">
+                <p class="text-xs text-slate-400 p-4">Mendeteksi lokasi...</p>
+            </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 class="font-bold text-center mb-4">Status Puasa Hari Ini</h3>
+            <div class="flex p-1 bg-slate-100 rounded-xl">
+                <button onclick="updatePuasa('puasa')" id="tab-puasa" class="flex-1 py-2 rounded-lg font-medium transition-all">Puasa</button>
+                <button onclick="updatePuasa('tidak')" id="tab-tidak" class="flex-1 py-2 rounded-lg font-medium transition-all text-slate-400">Tidak</button>
+            </div>
+            <p id="puasa-msg" class="text-[10px] text-center mt-3 text-slate-400 italic font-light"></p>
+        </section>
+
+        <section>
+            <div class="flex justify-between items-center mb-3 px-1">
+                <h3 class="font-bold flex items-center"><i class="fa-solid fa-star mr-2 text-emerald-600"></i> Amalan Harian</h3>
+                <span id="progress-text" class="text-xs font-bold text-emerald-600">0/4</span>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100" id="amalan-list">
+                <label class="flex items-center p-4 border-b border-slate-50 last:border-0 active:bg-slate-50 transition-colors">
+                    <input type="checkbox" onchange="saveProgress()" class="amalan-check w-5 h-5 accent-emerald-600 rounded">
+                    <span class="ml-3 text-sm">Sholat Berjamaah di Masjid</span>
+                </label>
+                <label class="flex items-center p-4 border-b border-slate-50 last:border-0 active:bg-slate-50">
+                    <input type="checkbox" onchange="saveProgress()" class="amalan-check w-5 h-5 accent-emerald-600 rounded">
+                    <span class="ml-3 text-sm">Tadarus (Minimal 1 Ruku')</span>
+                </label>
+                <label class="flex items-center p-4 border-b border-slate-50 last:border-0 active:bg-slate-50">
+                    <input type="checkbox" onchange="saveProgress()" class="amalan-check w-5 h-5 accent-emerald-600 rounded">
+                    <span class="ml-3 text-sm">Sedekah / Berbagi Takjil</span>
+                </label>
+                <label class="flex items-center p-4 border-b border-slate-50 last:border-0 active:bg-slate-50">
+                    <input type="checkbox" onchange="saveProgress()" class="amalan-check w-5 h-5 accent-emerald-600 rounded">
+                    <span class="ml-3 text-sm">Dzikir Pagi & Petang</span>
+                </label>
+            </div>
+        </section>
+
+        <section>
+            <h3 class="font-bold mb-3 flex items-center px-1"><i class="fa-solid fa-book mr-2 text-emerald-600"></i> Doa Hari Ini</h3>
+            <div class="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl">
+                <p class="text-xs font-bold text-emerald-700 mb-2 uppercase">Niat Puasa Ramadhan</p>
+                <p class="text-right text-2xl font-serif leading-relaxed mb-3 text-emerald-900">نَوَيْتُ صَوْمَ غَدٍ عَنْ أَدَاءِ فَرْضِ شَهْرِ رَمَضَانَ هَذِهِ السَّنَةِ لِلَّهِ تَعَالَى</p>
+                <p class="text-xs text-emerald-800 leading-relaxed italic">"Nawaitu shauma ghadin 'an ada'i fardhi syahri ramadhana hadzihis sanati lillahi ta'ala."</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // FUNGSI 1: AMBIL JADWAL SHOLAT (API)
+        async function getJadwal() {
+            try {
+                // Contoh Koordinat Surabaya (Bisa diganti dengan navigator.geolocation)
+                const res = await fetch('https://api.aladhan.com/v1/timingsByCity?city=Surabaya&country=Indonesia&method=11');
+                const data = await res.json();
+                const timings = data.data.timings;
+                
+                document.getElementById('tgl-hijriah').innerText = `${data.data.date.hijri.day} ${data.data.date.hijri.month.en} ${data.data.date.hijri.year} H`;
+                
+                const sholatList = ['Imsak', 'Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+                const container = document.getElementById('sholat-container');
+                container.innerHTML = '';
+
+                sholatList.forEach(s => {
+                    const isMaghrib = s === 'Maghrib';
+                    container.innerHTML += `
+                        <div class="${isMaghrib ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700'} p-4 rounded-2xl shadow-sm min-w-[105px] text-center border border-slate-100">
+                            <p class="text-[10px] uppercase opacity-70">${s === 'Fajr' ? 'Subuh' : s}</p>
+                            <p class="font-bold text-lg">${timings[s]}</p>
+                        </div>
+                    `;
+                });
+
+                startCountdown(timings['Maghrib']);
+            } catch (e) {
+                console.log("Gagal memuat jadwal");
+            }
+        }
+
+        // FUNGSI 2: COUNTDOWN TIMER
+        function startCountdown(targetTime) {
+            setInterval(() => {
+                const now = new Date();
+                const [h, m] = targetTime.split(':');
+                const target = new Date();
+                target.setHours(h, m, 0);
+
+                let diff = target - now;
+                if (diff < 0) diff = 0; // Sudah lewat Maghrib
+
+                const hours = Math.floor(diff / (1000 * 60 * 60)).toString().padStart(2, '0');
+                const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+                const secs = Math.floor((diff % (1000 * 60)) / 1000).toString().padStart(2, '0');
+                
+                document.getElementById('timer').innerText = `${hours}:${mins}:${secs}`;
+            }, 1000);
+        }
+
+        // FUNGSI 3: TRACKING PUASA (UX Toggle)
+        function updatePuasa(status) {
+            const btnP = document.getElementById('tab-puasa');
+            const btnT = document.getElementById('tab-tidak');
+            const msg = document.getElementById('puasa-msg');
+
+            if(status === 'puasa') {
+                btnP.className = "flex-1 py-2 rounded-lg font-medium bg-white shadow-sm text-emerald-600";
+                btnT.className = "flex-1 py-2 rounded-lg font-medium text-slate-400";
+                msg.innerText = "Alhamdulillah, semoga berkah!";
+            } else {
+                btnT.className = "flex-1 py-2 rounded-lg font-medium bg-white shadow-sm text-red-500";
+                btnP.className = "flex-1 py-2 rounded-lg font-medium text-slate-400";
+                msg.innerText = "Tetap semangat beribadah lainnya ya!";
+            }
+            localStorage.setItem('status_puasa', status);
+        }
+
+        // FUNGSI 4: SIMPAN PROGRES AMALAN (Local Storage)
+        function saveProgress() {
+            const checks = document.querySelectorAll('.amalan-check');
+            let count = 0;
+            checks.forEach((c, index) => {
+                if(c.checked) count++;
+                localStorage.setItem('amalan-' + index, c.checked);
+            });
+            document.getElementById('progress-text').innerText = `${count}/${checks.length}`;
+        }
+
+        // LOAD DATA SAAT BUKA WEB
+        window.onload = () => {
+            getJadwal();
+            // Restore amalan
+            const checks = document.querySelectorAll('.amalan-check');
+            checks.forEach((c, index) => {
+                c.checked = localStorage.getItem('amalan-' + index) === 'true';
+            });
+            saveProgress();
+            
+            // Restore status puasa
+            const savedPuasa = localStorage.getItem('status_puasa');
+            if(savedPuasa) updatePuasa(savedPuasa);
+        };
+    </script>
+
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</body>
+</html>
